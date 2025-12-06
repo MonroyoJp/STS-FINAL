@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Indigenous Science & Technologies</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #000; 
+        }
+        canvas { 
+            display: block; 
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ==================== THREE.JS SCENE ====================
+        let scene, camera, renderer;
+        let flyingParticles;
+        let nebulaParticles = [];
+        let spotlights = [];
+        let showParticles = true;
+        const FLYING_PARTICLE_COUNT = 5000;
+        const DEPTH = 500;
+        const CAMERA_SPEED = 0.4;
+        let cameraZoomProgress = 0;
+        let shouldZoom = false;
+
+        function createSpotlightBeams() {
+            const rayCount = 6;
+            for (let i = 0; i < rayCount; i++) {
+                const width = 100 + i * 30;
+                const height = 500;
+                const geometry1 = new THREE.PlaneGeometry(width, height, 1, 20);
+
+                const canvas1 = document.createElement('canvas');
+                canvas1.width = 512;
+                canvas1.height = 512;
+                const ctx1 = canvas1.getContext('2d');
+
+                const gradient1 = ctx1.createLinearGradient(0, 0, 0, 512);
+                gradient1.addColorStop(0, 'rgba(170, 140, 255, 0)');
+                gradient1.addColorStop(0.2, 'rgba(170, 140, 255, 0.08)');
+                gradient1.addColorStop(0.5, 'rgba(170, 140, 255, 0.15)');
+                gradient1.addColorStop(0.8, 'rgba(170, 140, 255, 0.08)');
+                gradient1.addColorStop(1, 'rgba(170, 140, 255, 0)');
+                ctx1.fillStyle = gradient1;
+                ctx1.fillRect(0, 0, 512, 512);
+
+                const gradient2 = ctx1.createLinearGradient(0, 0, 512, 0);
+                gradient2.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+                gradient2.addColorStop(0.3, 'rgba(0, 0, 0, 0)');
+                gradient2.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+                gradient2.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+                ctx1.globalCompositeOperation = 'destination-out';
+                ctx1.fillStyle = gradient2;
+                ctx1.fillRect(0, 0, 512, 512);
+
+                const texture1 = new THREE.CanvasTexture(canvas1);
+
+                const material1 = new THREE.MeshBasicMaterial({
+                    map: texture1,
+                    transparent: true,
+                    side: THREE.DoubleSide,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    opacity: 0
+                });
+
+                const ray1 = new THREE.Mesh(geometry1, material1);
+                ray1.position.set(-100 - i * 12, 80 + i * 15, -1000 - i * 35); // Changed from -600
+                ray1.rotation.z = 0.35 + i * 0.03;
+                ray1.rotation.x = -0.1;
+                ray1.userData = { isSpotlight: true, baseZ: -1000 - i * 35, baseScaleY: 1 }; // Changed from -600
+                spotlights.push(ray1);
+                scene.add(ray1);
+
+                const geometry2 = new THREE.PlaneGeometry(width, height, 1, 20);
+                const canvas2 = document.createElement('canvas');
+                canvas2.width = 512;
+                canvas2.height = 512;
+                const ctx2 = canvas2.getContext('2d');
+
+                const gradient3 = ctx2.createLinearGradient(0, 0, 0, 512);
+                gradient3.addColorStop(0, 'rgba(255, 220, 100, 0)');
+                gradient3.addColorStop(0.2, 'rgba(255, 220, 100, 0.08)');
+                gradient3.addColorStop(0.5, 'rgba(255, 220, 100, 0.15)');
+                gradient3.addColorStop(0.8, 'rgba(255, 220, 100, 0.08)');
+                gradient3.addColorStop(1, 'rgba(255, 220, 100, 0)');
+                ctx2.fillStyle = gradient3;
+                ctx2.fillRect(0, 0, 512, 512);
+
+                const gradient4 = ctx2.createLinearGradient(0, 0, 512, 0);
+                gradient4.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+                gradient4.addColorStop(0.3, 'rgba(0, 0, 0, 0)');
+                gradient4.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+                gradient4.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+                ctx2.globalCompositeOperation = 'destination-out';
+                ctx2.fillStyle = gradient4;
+                ctx2.fillRect(0, 0, 512, 512);
+
+                const texture2 = new THREE.CanvasTexture(canvas2);
+
+                const material2 = new THREE.MeshBasicMaterial({
+                    map: texture2,
+                    transparent: true,
+                    side: THREE.DoubleSide,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    opacity: 0
+                });
+
+                const ray2 = new THREE.Mesh(geometry2, material2);
+                ray2.position.set(100 + i * 12, 80 + i * 15, -1000 - i * 35); // Changed from -600
+                ray2.rotation.z = -0.35 - i * 0.03;
+                ray2.rotation.x = -0.1;
+                ray2.userData = { isSpotlight: true, baseZ: -1000 - i * 35, baseScaleY: 1 }; // Changed from -600
+                spotlights.push(ray2);
+                scene.add(ray2);
+            }
+        }
+
+        function createNebulaBackground() {
+            const particleCount = 25000; // Increased from 18000
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const sizes = [];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            // Create a more diffuse, star-like particle instead of round blob
+            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.15, 'rgba(255,255,255,0.95)');
+            gradient.addColorStop(0.3, 'rgba(255,255,255,0.7)');
+            gradient.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+            gradient.addColorStop(0.7, 'rgba(255,255,255,0.15)');
+            gradient.addColorStop(0.85, 'rgba(255,255,255,0.05)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 64, 64);
+            
+            // Add cross-shaped glow for star effect
+            ctx.globalCompositeOperation = 'lighter';
+            
+            // Horizontal beam
+            const horizGrad = ctx.createLinearGradient(0, 32, 64, 32);
+            horizGrad.addColorStop(0, 'rgba(255,255,255,0)');
+            horizGrad.addColorStop(0.4, 'rgba(255,255,255,0.3)');
+            horizGrad.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+            horizGrad.addColorStop(0.6, 'rgba(255,255,255,0.3)');
+            horizGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = horizGrad;
+            ctx.fillRect(0, 28, 64, 8);
+            
+            // Vertical beam
+            const vertGrad = ctx.createLinearGradient(32, 0, 32, 64);
+            vertGrad.addColorStop(0, 'rgba(255,255,255,0)');
+            vertGrad.addColorStop(0.4, 'rgba(255,255,255,0.3)');
+            vertGrad.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+            vertGrad.addColorStop(0.6, 'rgba(255,255,255,0.3)');
+            vertGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = vertGrad;
+            ctx.fillRect(28, 0, 8, 64);
+            
+            const particleTexture = new THREE.CanvasTexture(canvas);
+
+            // Create infinity symbol with more defined loops
+            const originalPositions = [];
+            for (let i = 0; i < particleCount; i++) {
+                const t = (i / particleCount) * Math.PI * 2;
+                const angle = t * 2;
+                
+                // Infinity curve (lemniscate)
+                const scale = 85 + Math.sin(angle * 3) * 8;
+                const denominator = 1 + Math.sin(angle) * Math.sin(angle);
+                const x = scale * Math.cos(angle) / denominator;
+                const y = scale * Math.sin(angle) * Math.cos(angle) / denominator;
+                
+                // Store original infinity positions (much farther away)
+                originalPositions.push(x, y, -1000); // Changed from -600 to -1000
+                
+                // Reduced noise for clearer infinity shape
+                const cloudNoise = (Math.random() - 0.5) * 8;
+                const heightNoise = (Math.random() - 0.5) * 10;
+                const depthNoise = (Math.random() - 0.5) * 25;
+                
+                positions.push(
+                    x + cloudNoise,
+                    y + heightNoise,
+                    -1000 + depthNoise // Changed from -600 to -1000
+                );
+
+                // More vibrant color palette based on position along the curve
+                const distanceFromCenter = Math.sqrt(x*x + y*y);
+                const anglePosition = Math.atan2(y, x);
+                
+                let color;
+                
+                // Create color zones based on position in infinity
+                const colorZone = (anglePosition + Math.PI) / (Math.PI * 2);
+                
+                if (colorZone < 0.2) {
+                    // Deep purple
+                    color = new THREE.Color().setHSL(0.75 + Math.random() * 0.05, 0.8 + Math.random() * 0.2, 0.5 + Math.random() * 0.3);
+                } else if (colorZone < 0.35) {
+                    // Magenta/Pink
+                    color = new THREE.Color().setHSL(0.85 + Math.random() * 0.05, 0.7 + Math.random() * 0.3, 0.5 + Math.random() * 0.3);
+                } else if (colorZone < 0.5) {
+                    // Hot pink to orange
+                    color = new THREE.Color().setHSL(0.95 + Math.random() * 0.08, 0.8 + Math.random() * 0.2, 0.5 + Math.random() * 0.3);
+                } else if (colorZone < 0.65) {
+                    // Orange to yellow
+                    color = new THREE.Color().setHSL(0.10 + Math.random() * 0.08, 0.85 + Math.random() * 0.15, 0.55 + Math.random() * 0.3);
+                } else if (colorZone < 0.8) {
+                    // Cyan/Turquoise
+                    color = new THREE.Color().setHSL(0.50 + Math.random() * 0.08, 0.7 + Math.random() * 0.3, 0.5 + Math.random() * 0.3);
+                } else {
+                    // Blue to purple
+                    color = new THREE.Color().setHSL(0.60 + Math.random() * 0.1, 0.75 + Math.random() * 0.25, 0.5 + Math.random() * 0.3);
+                }
+                
+                // Bright white particles at the center crossing
+                if (distanceFromCenter < 12 && Math.random() > 0.4) {
+                    color = new THREE.Color(1, 0.95, 0.9);
+                }
+                
+                colors.push(color.r, color.g, color.b);
+
+                // Varied particle sizes - larger on the infinity path
+                const sizeRoll = Math.random();
+                let particleSize;
+                if (distanceFromCenter < 15) {
+                    particleSize = Math.random() * 10 + 8; // Increased from 6 + 4
+                } else if (sizeRoll < 0.6) {
+                    particleSize = Math.random() * 6 + 4; // Increased from 3.5 + 2
+                } else {
+                    particleSize = Math.random() * 8 + 5; // Increased from 5 + 3
+                }
+                sizes.push(particleSize);
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+
+            // Store original positions for animation
+            geometry.setAttribute('originalPosition', new THREE.Float32BufferAttribute(originalPositions, 3));
+
+            // Add visibility attribute - all particles start invisible
+            const visibility = new Float32Array(particleCount).fill(0);
+            geometry.setAttribute('visibility', new THREE.BufferAttribute(visibility, 1));
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    pointTexture: { value: particleTexture },
+                    time: { value: 0 },
+                    brightness: { value: 0.5 } // Increased base brightness
+                },
+                vertexShader: `
+                    attribute float size;
+                    attribute vec3 color;
+                    attribute float visibility;
+                    varying vec3 vColor;
+                    varying float vVisibility;
+                    
+                    void main() {
+                        vColor = color;
+                        vVisibility = visibility;
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        gl_PointSize = size * (300.0 / -mvPosition.z) * visibility;
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D pointTexture;
+                    uniform float brightness;
+                    varying vec3 vColor;
+                    varying float vVisibility;
+                    
+                    void main() {
+                        vec4 texColor = texture2D(pointTexture, gl_PointCoord);
+                        // Use brightness uniform for dynamic control
+                        gl_FragColor = vec4(vColor, texColor.a * vVisibility * brightness);
+                    }
+                `,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            const nebula = new THREE.Points(geometry, material);
+            nebula.userData = { 
+                isNebula: true, 
+                visibleCount: 0,
+                totalCount: particleCount
+            };
+            nebulaParticles.push(nebula);
+            scene.add(nebula);
+        }
+
+        function createFlyingGoldParticles() {
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const sizes = [];
+            const distances = [];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            
+            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(240,230,255,1)');
+            gradient.addColorStop(0.4, 'rgba(220,200,255,0.9)');
+            gradient.addColorStop(0.6, 'rgba(200,180,255,0.5)');
+            gradient.addColorStop(0.8, 'rgba(180,160,255,0.2)');
+            gradient.addColorStop(1, 'rgba(160,140,255,0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 32, 32);
+            
+            ctx.globalCompositeOperation = 'lighter';
+            const glowGradient = ctx.createRadialGradient(16, 16, 8, 16, 16, 16);
+            glowGradient.addColorStop(0, 'rgba(255,255,255,0.3)');
+            glowGradient.addColorStop(0.5, 'rgba(235,220,255,0.2)');
+            glowGradient.addColorStop(1, 'rgba(220,200,255,0)');
+            ctx.fillStyle = glowGradient;
+            ctx.fillRect(0, 0, 32, 32);
+            
+            const sparkleTexture = new THREE.CanvasTexture(canvas);
+
+            const maxDistance = Math.sqrt(60*60 + 50*50);
+
+            for (let i = 0; i < FLYING_PARTICLE_COUNT; i++) {
+                const x = (Math.random() - 0.5) * 60;
+                const y = (Math.random() - 0.5) * 50;
+                const z = -Math.random() * DEPTH - 600; // Push particles much farther back
+                positions.push(x, y, z);
+                
+                const dist = Math.sqrt(x*x + y*y);
+                distances.push(dist / maxDistance);
+                
+                const sizeRoll = Math.random();
+                let particleSize;
+                if (sizeRoll < 0.7) {
+                    particleSize = Math.random() * 0.8 + 0.5; // Increased from 0.3 + 0.15
+                } else if (sizeRoll < 0.9) {
+                    particleSize = Math.random() * 1.2 + 0.8; // Increased from 0.5 + 0.3
+                } else {
+                    particleSize = Math.random() * 1.8 + 1.2; // Increased from 0.8 + 0.5
+                }
+                sizes.push(particleSize);
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+            geometry.setAttribute('distance', new THREE.Float32BufferAttribute(distances, 1));
+
+            const material = new THREE.PointsMaterial({
+                size: 1.2, // Increased base size from 0.4 to 1.2
+                map: sparkleTexture,
+                color: 0xe8d4ff,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                sizeAttenuation: true,
+                depthWrite: false
+            });
+
+            flyingParticles = new THREE.Points(geometry, material);
+            flyingParticles.userData = { fadeInProgress: 0 };
+            scene.add(flyingParticles);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.0012);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, DEPTH * 3);
+            camera.position.y = 0;
+            camera.position.z = 0;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000);
+            document.body.appendChild(renderer.domElement);
+
+            const orangeLight = new THREE.DirectionalLight(0xaa66ff, 2.5);
+            orangeLight.position.set(-30, 20, 10);
+            scene.add(orangeLight);
+
+            const blueLight = new THREE.DirectionalLight(0xffdd66, 2.0);
+            blueLight.position.set(30, -20, 10);
+            scene.add(blueLight);
+
+            scene.add(new THREE.AmbientLight(0x222222, 0.8));
+
+            createSpotlightBeams();
+            createNebulaBackground();
+            createFlyingGoldParticles();
+
+            // Start smooth zoom immediately when scene is ready
+            shouldZoom = true;
+            cameraZoomProgress = 0;
+            window.aggressiveZoomMode = false;
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            camera.position.z -= CAMERA_SPEED;
+            const time = performance.now() * 0.001;
+
+            // Fade in particles from center - SLOWER
+            if (flyingParticles && flyingParticles.userData.fadeInProgress < 1) {
+                flyingParticles.userData.fadeInProgress += 0.006; // Reduced from 0.015
+                flyingParticles.material.opacity = Math.min(flyingParticles.userData.fadeInProgress, 1) * 0.85;
+                
+                // Reveal nebula particles gradually and smoothly
+                nebulaParticles.forEach(nebula => {
+                    const visibilityAttr = nebula.geometry.attributes.visibility;
+                    const totalParticles = nebula.userData.totalCount;
+                    const targetVisible = Math.floor(flyingParticles.userData.fadeInProgress * totalParticles);
+                    
+                    // Reveal particles in smaller batches for smoother appearance
+                    if (nebula.userData.visibleCount < targetVisible) {
+                        const particlesToReveal = Math.min(50, targetVisible - nebula.userData.visibleCount); // Reduced from 150
+                        for (let i = 0; i < particlesToReveal; i++) {
+                            const randomIndex = Math.floor(Math.random() * totalParticles);
+                            if (visibilityAttr.array[randomIndex] < 0.5) {
+                                // Gradual fade in instead of instant appearance
+                                visibilityAttr.array[randomIndex] = Math.min(1, visibilityAttr.array[randomIndex] + 0.08);
+                                if (visibilityAttr.array[randomIndex] >= 0.95) {
+                                    nebula.userData.visibleCount++;
+                                }
+                            }
+                        }
+                        visibilityAttr.needsUpdate = true;
+                    }
+                    
+                    // Continue fading in all particles smoothly
+                    for (let i = 0; i < visibilityAttr.array.length; i++) {
+                        if (visibilityAttr.array[i] > 0 && visibilityAttr.array[i] < 1) {
+                            visibilityAttr.array[i] = Math.min(1, visibilityAttr.array[i] + 0.015);
+                            visibilityAttr.needsUpdate = true;
+                        }
+                    }
+                });
+                
+                // Start zoom when particles reach 70% visibility
+                if (flyingParticles.userData.fadeInProgress >= 0.7 && !shouldZoom) {
+                    shouldZoom = true;
+                    cameraZoomProgress = 0; // Reset to start smooth zoom
+                }
+            }
+
+            // After particles are fully visible, switch to aggressive zoom
+            if (flyingParticles && flyingParticles.userData.fadeInProgress >= 1) {
+                // Flag to switch to aggressive zoom mode
+                if (!window.aggressiveZoomMode) {
+                    window.aggressiveZoomMode = true;
+                }
+                
+                // Animate light rays with height increase
+                spotlights.forEach((spotlight, index) => {
+                    if (spotlight.userData.heightProgress === undefined) {
+                        spotlight.userData.heightProgress = 0;
+                    }
+                    if (spotlight.userData.heightProgress < 1) {
+                        spotlight.userData.heightProgress += 0.008;
+                        const heightScale = 1 + spotlight.userData.heightProgress * 1;
+                        spotlight.scale.y = heightScale;
+                        const maxOpacity = 0.6 - index * 0.05;
+                        spotlight.material.opacity = maxOpacity * spotlight.userData.heightProgress;
+                    }
+                });
+            }
+
+            // Camera zoom animation - smooth then aggressive
+            if (shouldZoom && cameraZoomProgress < 1) {
+                // Smooth zoom until nebula is fully visible
+                if (!window.aggressiveZoomMode) {
+                    cameraZoomProgress += 0.0008; // Slow smooth zoom
+                    let t = Math.min(cameraZoomProgress, 1);
+                    const easeProgress = t; // Linear for steady movement
+                    const zoomFactor = 1 + easeProgress * 29;
+                    camera.fov = 75 / zoomFactor;
+                    
+                    // Adjust flying particle size as we zoom
+                    const sizeScale = 1 + (1 - easeProgress) * 2; // Larger when far, smaller when close
+                    flyingParticles.material.size = 1.2 * sizeScale;
+                } else {
+                    // Aggressive zoom after nebula is fully visible
+                    cameraZoomProgress += 0.004; // Much faster
+                    let t = Math.min(cameraZoomProgress, 1);
+                    const easeProgress = t;
+                    const zoomFactor = 1 + easeProgress * 29;
+                    camera.fov = 75 / zoomFactor;
+                    
+                    // Continue adjusting flying particle size
+                    const sizeScale = 1 + (1 - easeProgress) * 2;
+                    flyingParticles.material.size = 1.2 * sizeScale;
+                }
+                camera.updateProjectionMatrix();
+            }
+
+            if (showParticles) {
+                const positions = flyingParticles.geometry.attributes.position.array;
+                const sizes = flyingParticles.geometry.attributes.size.array;
+                const distances = flyingParticles.geometry.attributes.distance.array;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i + 2] += CAMERA_SPEED;
+
+                    const particleZ = positions[i + 2];
+                    const distanceFromCamera = Math.abs(particleZ - camera.position.z);
+                    
+                    const optimalDistance = 200;
+                    
+                    let keplerSpeedFactor;
+                    if (distanceFromCamera < optimalDistance) {
+                        keplerSpeedFactor = 0.3 + (distanceFromCamera / optimalDistance) * 0.7;
+                    } else {
+                        const excessDistance = distanceFromCamera - optimalDistance;
+                        const falloffRate = 1 / (1 + excessDistance / 150);
+                        keplerSpeedFactor = falloffRate;
+                    }
+                    
+                    keplerSpeedFactor = Math.max(0.2, Math.min(1.0, keplerSpeedFactor));
+                    
+                    const radianceDistance = 150;
+                    const particleIndex = i / 3;
+                    const baseSize = sizes[particleIndex];
+                    
+                    if (distanceFromCamera < radianceDistance) {
+                        const radianceIntensity = 1 - (distanceFromCamera / radianceDistance);
+                        const sizeMultiplier = 1 + radianceIntensity * 2.5;
+                        sizes[particleIndex] = baseSize * sizeMultiplier;
+                        
+                        const pulseSpeed = 2 + (particleIndex % 10) / 5;
+                        const pulse = Math.sin(time * pulseSpeed + particleIndex * 0.5) * 0.3 + 1;
+                        sizes[particleIndex] *= pulse;
+                    } else {
+                        sizes[particleIndex] = baseSize;
+                    }
+
+                    const particleId = i / 3;
+                    const speedVariation = 0.6 + (particleId % 100) / 150;
+                    
+                    const flow1 = Math.sin(time * speedVariation + particleId * 0.1) * 0.15 * keplerSpeedFactor;
+                    const flow2 = Math.sin(time * speedVariation * 0.5 + particleId * 0.05) * 0.10 * keplerSpeedFactor;
+                    const flow3 = Math.cos(time * speedVariation * 0.3 + particleId * 0.08) * 0.12 * keplerSpeedFactor;
+                    
+                    const turbulence1 = Math.cos(time * speedVariation * 0.7 + particleId * 0.15) * 0.10 * keplerSpeedFactor;
+                    const turbulence2 = Math.sin(time * speedVariation * 1.2 + particleId * 0.2) * 0.08 * keplerSpeedFactor;
+                    
+                    positions[i] += flow1 + flow2 + turbulence1;
+                    positions[i + 1] += flow3 + turbulence2;
+                    positions[i + 2] += Math.sin(time * speedVariation + particleId * 0.3) * 0.04 * keplerSpeedFactor;
+
+                    if (positions[i + 2] > camera.position.z + 10) {
+                        positions[i + 2] = camera.position.z - DEPTH + Math.random() * 20;
+                        positions[i] = (Math.random() - 0.5) * 30;
+                        positions[i + 1] = (Math.random() - 0.5) * 25;
+                        
+                        const sizeRoll = Math.random();
+                        if (sizeRoll < 0.7) {
+                            sizes[particleIndex] = Math.random() * 0.8 + 0.5; // Increased
+                        } else if (sizeRoll < 0.9) {
+                            sizes[particleIndex] = Math.random() * 1.2 + 0.8; // Increased
+                        } else {
+                            sizes[particleIndex] = Math.random() * 1.8 + 1.2; // Increased
+                        }
+                    }
+                }
+                flyingParticles.geometry.attributes.position.needsUpdate = true;
+                flyingParticles.geometry.attributes.size.needsUpdate = true;
+            }
+
+            nebulaParticles.forEach(nebula => {
+                // Scale the nebula with the zoom to maintain shape density
+                if (shouldZoom && cameraZoomProgress > 0) {
+                    // Scale down as we zoom in to maintain visual density
+                    const zoomFactor = 1 + cameraZoomProgress * 29;
+                    const scaleAdjustment = 1 / Math.sqrt(zoomFactor * 0.5);
+                    nebula.scale.set(scaleAdjustment, scaleAdjustment, scaleAdjustment);
+                    
+                    // Brightness increases from 0.5 to 1.4 as zoom progresses
+                    const targetBrightness = 0.5 + (cameraZoomProgress * 0.9);
+                    nebula.material.uniforms.brightness.value = targetBrightness;
+                }
+                
+                nebula.position.z = camera.position.z - 1020; // Changed from -620 to be much farther
+                nebula.rotation.z += 0.0001;
+                
+                // Animate particles flowing along the infinity path
+                const positions = nebula.geometry.attributes.position.array;
+                const originalPositions = nebula.geometry.attributes.originalPosition.array;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    const particleIndex = i / 3;
+                    
+                    // Get original infinity path position
+                    const origX = originalPositions[i];
+                    const origY = originalPositions[i + 1];
+                    const origZ = originalPositions[i + 2];
+                    
+                    // Calculate angle on infinity curve for this particle
+                    const t = (particleIndex / (positions.length / 3)) * Math.PI * 2;
+                    const flowSpeed = 0.0003; // Reduced from 0.0008 for slower animation
+                    const newT = t + time * flowSpeed;
+                    const angle = newT * 2;
+                    
+                    // Calculate new position on infinity curve
+                    const scale = 85 + Math.sin(angle * 3) * 8;
+                    const denominator = 1 + Math.sin(angle) * Math.sin(angle);
+                    const targetX = scale * Math.cos(angle) / denominator;
+                    const targetY = scale * Math.sin(angle) * Math.cos(angle) / denominator;
+                    
+                    // Add flowing noise that moves with the particle - reduced for clearer shape
+                    const noiseScale = 8; // Reduced from 18
+                    const noiseSpeed = 0.3;
+                    const noiseX = Math.sin(time * noiseSpeed + particleIndex * 0.1) * noiseScale;
+                    const noiseY = Math.cos(time * noiseSpeed * 0.7 + particleIndex * 0.15) * (noiseScale * 1.2);
+                    const noiseZ = Math.sin(time * noiseSpeed * 0.5 + particleIndex * 0.08) * (noiseScale * 2.5);
+                    
+                    // Smoothly interpolate towards new position
+                    const smoothing = 0.02;
+                    positions[i] += (targetX + noiseX - positions[i]) * smoothing;
+                    positions[i + 1] += (targetY + noiseY - positions[i + 1]) * smoothing;
+                    positions[i + 2] += (origZ + noiseZ - positions[i + 2]) * smoothing;
+                }
+                
+                nebula.geometry.attributes.position.needsUpdate = true;
+            });
+
+            spotlights.forEach(spotlight => {
+                spotlight.position.z = camera.position.z + spotlight.userData.baseZ;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
