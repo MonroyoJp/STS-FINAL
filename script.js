@@ -67,7 +67,87 @@
                 gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
                 gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
                 onTransition: false
-            }
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/9.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/10.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/11.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/12.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/13.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/14.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/15.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/16.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/17.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
+            {
+                title: "",
+                description: "",
+                video: "assets/videos/slides/18.mp4",
+                gradient: "linear-gradient(135deg, #f2d638 0%, #f2d638 100%)",
+                gif: gifsCollection[Math.floor(Math.random() * gifsCollection.length)],
+                onTransition: true
+            },
             
         ];
 
